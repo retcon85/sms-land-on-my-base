@@ -96,7 +96,7 @@ static const int16_t lut[] = {
     0    // cos(90) or sin(0)
 };
 
-void game_model_reset(game_model_t *m, char *code)
+void game_model_reset(game_model_t *m, char *code, int difficulty)
 {
   if (!random_deserialize_seed(code))
   {
@@ -105,6 +105,8 @@ void game_model_reset(game_model_t *m, char *code)
   }
   m->gravity = 1 + (0x07 & random_next());
   m->wind_speed = (uint8_t)random_next();
+  m->safe_landing_speed = -SAFE_LANDING_SPEED * (4 - difficulty);
+  m->landing_margin = LANDING_MARGIN * (4 - difficulty);
 
   // generate landscape
   do
@@ -141,6 +143,7 @@ void game_model_reset(game_model_t *m, char *code)
   }
 
   // store level code for later
+  m->level_code = code;
   random_serialize(m->level_code);
 
   game_model_restart_level(m);
@@ -174,7 +177,7 @@ void game_model_disengage_thrust(game_model_t *m)
   m->ship.thrust--;
 }
 
-void game_model_turn_left(game_model_t *m)
+void game_model_decrease_angle(game_model_t *m)
 {
   if (m->ship.angle == 0)
     m->ship.angle = 359;
@@ -182,7 +185,7 @@ void game_model_turn_left(game_model_t *m)
     m->ship.angle--;
 }
 
-void game_model_turn_right(game_model_t *m)
+void game_model_increase_angle(game_model_t *m)
 {
   if (m->ship.angle == 359)
     m->ship.angle = 0;
@@ -193,7 +196,7 @@ void game_model_turn_right(game_model_t *m)
 static inline bool game_detect_landing(game_model_t *m)
 {
   int32_t delta_x = m->pad_pos * (SCREEN_WIDTH / LANDSCAPE_WIDTH) * SCALE - m->ship.x;
-  return delta_x <= LANDING_MARGIN && delta_x >= -LANDING_MARGIN;
+  return delta_x <= m->landing_margin && delta_x >= -m->landing_margin;
 }
 
 // collision detection is moderately optimised; assumes the ship is an 8x8 sprite
@@ -275,7 +278,7 @@ void game_model_tick(game_model_t *m)
   m->safe_to_land = false;
   if (game_detect_landing(m))
   {
-    m->safe_to_land = m->ship.vy >= -SAFE_LANDING_SPEED; // && m->ship.vy <= SAFE_LANDING_SPEED;
+    m->safe_to_land = m->ship.vy >= m->safe_landing_speed; // && m->ship.vy <= SAFE_LANDING_SPEED;
     if (m->collision)
       m->landed = m->safe_to_land;
   }

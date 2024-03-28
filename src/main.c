@@ -10,7 +10,8 @@
 #include "random.h"
 #include "util.h"
 
-static char start_level[8] = "APOLIMO";
+static game_config_t game_config;
+static bool config_loaded = false;
 
 void show_splash(void)
 {
@@ -95,7 +96,7 @@ bool show_code_menu(void)
   int len = 0;
 
   for (int i = 0; i < 8; i++)
-    start_level[i] = '\0';
+    game_config.level_code[i] = '\0';
 
   SMS_waitForVBlank();
   fade_to_blank();
@@ -112,14 +113,14 @@ bool show_code_menu(void)
 #ifdef USEPSGLIB
     PSGFrame();
 #endif
-    SMS_printatXY(12 + len, 17, start_level[len] ? &start_level[len] : "_");
+    SMS_printatXY(12 + len, 17, game_config.level_code[len] ? &game_config.level_code[len] : "_");
     keys = SMS_getKeysPressed();
-    if ((keys & PORT_A_KEY_1) && start_level[len] > 'A')
+    if ((keys & PORT_A_KEY_1) && game_config.level_code[len] >= 'A')
     {
       len++;
       if (len == 7)
       {
-        if (!random_deserialize_seed(start_level))
+        if (!random_deserialize_seed(game_config.level_code))
         {
           SMS_printatXY(8, 19, "Code not valid!");
           wait(1);
@@ -132,11 +133,11 @@ bool show_code_menu(void)
     }
     if (keys & (PORT_A_KEY_UP | PORT_A_KEY_DOWN))
     {
-      start_level[len] += (keys & PORT_A_KEY_UP) ? 1 : -1;
-      if (start_level[len] < 'A')
-        start_level[len] = 'A' + 15;
-      else if (start_level[len] > 'A' + 15)
-        start_level[len] = 'A';
+      game_config.level_code[len] += (keys & PORT_A_KEY_UP) ? 1 : -1;
+      if (game_config.level_code[len] < 'A')
+        game_config.level_code[len] = 'A' + 15;
+      else if (game_config.level_code[len] > 'A' + 15)
+        game_config.level_code[len] = 'A';
     }
   }
 }
@@ -169,28 +170,59 @@ void show_instructions_menu(void)
   }
 }
 
+typedef enum
+{
+  INSTRUCTIONS,
+  LEVEL_CODE,
+  DIFFICULTY,
+  INVERT_CONTROLS,
+  NEW_GAME,
+  CONTINUE,
+} main_menu_options_t;
+
 void show_main_menu(void)
 {
-  int menu_option;
+  main_menu_options_t menu_option;
   unsigned int keys;
+  int last_menu_item = config_loaded ? CONTINUE : NEW_GAME;
+
+  const char difficulty_levels[][10] = {
+      "Pointless",
+      "Normal   ",
+      "Crushing ",
+  };
 
   while (true)
   {
-    menu_option = 2;
+    menu_option = last_menu_item;
 
     SMS_mapROMBank(font_bin_bank);
     SMS_loadTiles(GLYPH(' '), 32, font_bin_size);
     clear_screen(" ");
-    SMS_printatXY(1, 7, "L A N D   O N   M Y   B A S E ");
-    SMS_printatXY(1, 9, "(and tell me that you love me)");
-    SMS_printatXY(8, 13, "Instructions");
-    SMS_printatXY(8, 15, "Enter level code");
-    SMS_printatXY(8, 17, "Start new game");
+    int i = 5;
+    int menu_i;
+    SMS_printatXY(1, i, "L A N D   O N   M Y   B A S E ");
+    i += 2;
+    SMS_printatXY(1, i, "(and tell me that you love me)");
+    i += 3;
+    menu_i = i;
+    SMS_printatXY(8, i, "Instructions");
+    i += 2;
+    SMS_printatXY(8, i, "Enter level code");
+    i += 2;
+    SMS_printatXY(8, i, "Difficulty - ");
+    i += 2;
+    SMS_printatXY(8, i, "Invert controls - ");
+    i += 2;
+    SMS_printatXY(8, i, "Start new game");
+    i += 2;
+    if (last_menu_item == CONTINUE)
+      SMS_printatXY(8, i, "Continue");
+
+    SMS_printatXY(6, menu_i + menu_option * 2, ">");
 
     SMS_mapROMBank(background_palette_bin_bank);
     fade_in(background_palette_bin, NULL, 0);
-
-    SMS_printatXY(6, 13 + menu_option * 2, ">");
 
     while (true)
     {
@@ -198,30 +230,46 @@ void show_main_menu(void)
 #ifdef USEPSGLIB
       PSGFrame();
 #endif
+      SMS_printatXY(26, menu_i + INVERT_CONTROLS * 2, game_config.invert_controls ? "YES" : "NO ");
+      SMS_printatXY(21, menu_i + DIFFICULTY * 2, difficulty_levels[game_config.difficulty]);
       keys = SMS_getKeysPressed();
       if (keys & (PORT_A_KEY_1 | PORT_A_KEY_2))
       {
-        if (menu_option == 2)
+        if (menu_option == CONTINUE)
         {
           return;
         }
-        else if (menu_option == 1)
+        if (menu_option == NEW_GAME)
+        {
+          for (int i = 0; i < sizeof(game_config.level_code); i++)
+            game_config.level_code[i] = DEFAULT_START_LEVEL[i];
+          return;
+        }
+        else if (menu_option == LEVEL_CODE)
         {
           if (show_code_menu())
             return;
           break;
         }
-        else
+        else if (menu_option == INSTRUCTIONS)
         {
           show_instructions_menu();
           break;
         }
+        else if (menu_option == DIFFICULTY)
+        {
+          game_config.difficulty = (game_config.difficulty + 1) % 3;
+        }
+        else if (menu_option == INVERT_CONTROLS)
+        {
+          game_config.invert_controls = !game_config.invert_controls;
+        }
       }
       if (keys & (PORT_A_KEY_UP | PORT_A_KEY_DOWN))
       {
-        SMS_printatXY(6, 13 + menu_option * 2, " ");
-        menu_option = (menu_option + (keys & PORT_A_KEY_DOWN ? 1 : 2)) % 3;
-        SMS_printatXY(6, 13 + menu_option * 2, ">");
+        SMS_printatXY(6, menu_i + menu_option * 2, " ");
+        menu_option = (menu_option + (keys & PORT_A_KEY_DOWN ? 1 : last_menu_item)) % (last_menu_item + 1);
+        SMS_printatXY(6, menu_i + menu_option * 2, ">");
       }
     }
   }
@@ -233,10 +281,11 @@ void main(void)
   while (true)
   {
     // play_music();
+    config_loaded = game_load_config(&game_config);
     show_main_menu();
     stop_music();
     fade_to_blank();
     clear_screen(BLANK_TILE);
-    game_loop(start_level);
+    game_run(&game_config);
   }
 }

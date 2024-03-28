@@ -53,16 +53,18 @@ typedef struct
   int8_t wind_speed;
   bool collision;
   bool landed;
-  char level_code[8];
+  char *level_code;
   bool safe_to_land;
+  int32_t landing_margin;
+  int16_t safe_landing_speed;
 } game_model_t;
 
-void game_model_reset(game_model_t *m, char *code);
+void game_model_reset(game_model_t *m, char *code, int difficulty);
 void game_model_restart_level(game_model_t *m);
 void game_model_engage_thrust(game_model_t *m);
 void game_model_disengage_thrust(game_model_t *m);
-void game_model_turn_left(game_model_t *m);
-void game_model_turn_right(game_model_t *m);
+void game_model_decrease_angle(game_model_t *m);
+void game_model_increase_angle(game_model_t *m);
 void game_model_tick(game_model_t *m);
 
 #endif
