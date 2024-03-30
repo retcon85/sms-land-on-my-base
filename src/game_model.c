@@ -105,8 +105,9 @@ void game_model_reset(game_model_t *m, char *code, int difficulty)
   }
   m->gravity = 1 + (0x07 & random_next());
   m->wind_speed = (uint8_t)random_next();
-  m->safe_landing_speed = -SAFE_LANDING_SPEED * (4 - difficulty);
-  m->landing_margin = LANDING_MARGIN * (4 - difficulty);
+  m->safe_landing_speed = -SAFE_LANDING_SPEED * (3 - difficulty);
+  m->landing_margin = LANDING_MARGIN * (3 - difficulty);
+  m->fuel_consumption = difficulty + 1;
 
   // generate landscape
   do
@@ -161,6 +162,7 @@ void game_model_restart_level(game_model_t *m)
   m->ship.angle = 0;
   m->landed = false;
   m->collision = false;
+  m->ship.fuel = UINT16_MAX;
 }
 
 void game_model_engage_thrust(game_model_t *m)
@@ -238,7 +240,10 @@ void game_model_tick(game_model_t *m)
 {
   if (m->collision)
     return;
-  // ship movement
+
+  if (m->ship.fuel <= MAX_THRUST)
+    m->ship.thrust = 0;
+
   m->ship.x += m->ship.vx + m->wind_speed / WIND_SCALE;
   m->ship.y += m->ship.vy;
 
@@ -275,11 +280,13 @@ void game_model_tick(game_model_t *m)
   m->ship.vy += (int32_t)m->ship.thrust * m->ship.angle_y / VELOCITY_SCALE - m->gravity;
 
   m->collision = game_detect_collision(m);
-  m->safe_to_land = false;
+  m->ship.safe_to_land = false;
   if (game_detect_landing(m))
   {
-    m->safe_to_land = m->ship.vy >= m->safe_landing_speed; // && m->ship.vy <= SAFE_LANDING_SPEED;
+    m->ship.safe_to_land = m->ship.vy >= m->safe_landing_speed; // && m->ship.vy <= SAFE_LANDING_SPEED;
     if (m->collision)
-      m->landed = m->safe_to_land;
+      m->landed = m->ship.safe_to_land;
   }
+
+  m->ship.fuel -= m->ship.thrust * m->fuel_consumption;
 }

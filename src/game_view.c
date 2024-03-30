@@ -8,6 +8,7 @@
 #define SHIP_SPRITES 0
 #define FLAME_SPRITES (SHIP_SPRITES + (ship_tiles_bin_size / 32))
 #define TICK_SPRITES (FLAME_SPRITES + (flames_tiles_bin_size / 32))
+#define FUEL_SPRITES (TICK_SPRITES + (flames_tiles_bin_size / 32))
 #define SPRITES_START 256
 
 void game_view_init(game_model_t *model)
@@ -23,6 +24,8 @@ void game_view_init(game_model_t *model)
   SMS_loadTiles(ship_tiles_bin, SPRITES_START + SHIP_SPRITES, ship_tiles_bin_size);
   SMS_mapROMBank(flames_tiles_bin_bank);
   SMS_loadTiles(flames_tiles_bin, SPRITES_START + FLAME_SPRITES, flames_tiles_bin_size);
+  SMS_mapROMBank(fuel_tiles_bin_bank);
+  SMS_loadTiles(fuel_tiles_bin, SPRITES_START + FUEL_SPRITES, fuel_tiles_bin_size);
   SMS_mapROMBank(ticks_tiles_bin_bank);
   SMS_loadTiles(ticks_tiles_bin, SPRITES_START + TICK_SPRITES, ticks_tiles_bin_size);
   SMS_mapROMBank(font_bin_bank);
@@ -59,6 +62,8 @@ void game_view_init(game_model_t *model)
   SMS_printatXY(0, 22, "Gravity   :                     ");
   print_dec1(15, 22, model->gravity, ' ');
   SMS_printatXY(0, 23, "Solar wind:                     ");
+  // SMS_printatXY(20, 22, "Score: 12345");
+  // SMS_printatXY(20, 23, "Level: 65536");
   if (model->wind_speed > 0)
   {
     SMS_printatXY(12, 23, "+");
@@ -69,6 +74,8 @@ void game_view_init(game_model_t *model)
     SMS_printatXY(12, 23, "-");
     print_dec3(13, 23, -model->wind_speed, ' ');
   }
+
+  SMS_setSpritePaletteColor(10, 0x0e);
 
   SMS_displayOn();
 }
@@ -153,6 +160,9 @@ bool game_view_update(game_model_t *model)
   PSGSFXFrame();
 #endif
 
+  SMS_copySpritestoSAT();
+  SMS_initSprites();
+
   if (model->landed)
   {
     game_show_landed_screen(model);
@@ -173,14 +183,51 @@ bool game_view_update(game_model_t *model)
     unsigned int y = 192 - 8 - model->ship.y / SCALE;
 
     SMS_addSprite(x, y, SHIP_SPRITES);
-    y += 8;
+    x += 12;
+    y -= 12;
+    SMS_addSprite(x, y, FUEL_SPRITES);
+    if (model->ship.fuel >= 3 * UINT16_MAX / 8)
+    {
+      SMS_addSprite(x, y, FUEL_SPRITES + 2);
+      x += 7;
+      SMS_addSprite(x, y, FUEL_SPRITES + 1);
+      x += 1;
+      if (model->ship.fuel >= 7 * UINT16_MAX / 8)
+        SMS_addSprite(x, y, FUEL_SPRITES + 2);
+      else if (model->ship.fuel >= 6 * UINT16_MAX / 8)
+        SMS_addSprite(x, y, FUEL_SPRITES + 3);
+      else if (model->ship.fuel >= 5 * UINT16_MAX / 8)
+        SMS_addSprite(x, y, FUEL_SPRITES + 4);
+      else if (model->ship.fuel >= 4 * UINT16_MAX / 8)
+        SMS_addSprite(x, y, FUEL_SPRITES + 5);
+      x -= 20;
+    }
+    else
+    {
+      if (model->ship.fuel >= 2 * UINT16_MAX / 8)
+        SMS_addSprite(x, y, FUEL_SPRITES + 3);
+      else if (model->ship.fuel >= 1 * UINT16_MAX / 8)
+        SMS_addSprite(x, y, FUEL_SPRITES + 4);
+      else if (model->ship.fuel >= 0)
+        SMS_addSprite(x, y, FUEL_SPRITES + 5);
+      x += 7;
+      SMS_addSprite(x, y, FUEL_SPRITES + 1);
+      x -= 19;
+    }
+
+    if (model->ship.fuel < 2 * UINT16_MAX / 8)
+      SMS_setSpritePaletteColor(10, 0x03);
+    else if (model->ship.fuel < 4 * UINT16_MAX / 8)
+      SMS_setSpritePaletteColor(10, 0x07);
+    else if (model->ship.fuel < 6 * UINT16_MAX / 8)
+      SMS_setSpritePaletteColor(10, 0x0f);
+
+    y += 20;
     SMS_addSprite(x, y, FLAME_SPRITES + (thrust_level / 4));
     y += (model->ship.angle_y / 32) - 6;
     x -= model->ship.angle_x / 32;
-    SMS_addSprite(x, y, TICK_SPRITES + (model->safe_to_land ? 1 : 0));
+    SMS_addSprite(x, y, TICK_SPRITES + (model->ship.safe_to_land ? 1 : 0));
   }
-
-  SMS_copySpritestoSAT();
 
 #ifdef USEPSGLIB
   if (thrust_level == 0)
@@ -195,8 +242,6 @@ bool game_view_update(game_model_t *model)
       PSGSFXPlayLoop(&thrust_sfx, SFX_CHANNEL3);
   }
 #endif
-
-  SMS_initSprites();
 
   static uint8_t pad_tile = 0;
   SMS_setTileatXY(model->pad_pos, 24 - model->landscape[model->pad_pos].view_y, 3 + pad_tile / 50);

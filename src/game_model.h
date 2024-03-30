@@ -28,6 +28,8 @@ typedef struct
   uint8_t thrust;
   int16_t angle_x;
   int16_t angle_y;
+  bool safe_to_land;
+  uint16_t fuel;
 } ship_t;
 
 typedef struct
@@ -54,9 +56,9 @@ typedef struct
   bool collision;
   bool landed;
   char *level_code;
-  bool safe_to_land;
   int32_t landing_margin;
   int16_t safe_landing_speed;
+  uint8_t fuel_consumption;
 } game_model_t;
 
 void game_model_reset(game_model_t *m, char *code, int difficulty);
