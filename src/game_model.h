@@ -59,6 +59,7 @@ typedef struct
   int32_t landing_margin;
   int16_t safe_landing_speed;
   uint8_t fuel_consumption;
+  bool paused;
 } game_model_t;
 
 void game_model_reset(game_model_t *m, char *code, int difficulty);

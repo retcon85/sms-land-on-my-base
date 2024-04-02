@@ -115,11 +115,18 @@ inline void wait(int seconds)
     SMS_waitForVBlank();
 }
 
+static uint8_t flash_color = 0x00;
+
 inline void flash_text(void)
 {
-  static uint8_t color = 0x00;
-  SMS_setSpritePaletteColor(1, color);
-  color = ~color;
+  SMS_setSpritePaletteColor(1, flash_color);
+  flash_color = ~flash_color;
+}
+
+inline void flash_text_hide(void)
+{
+  flash_color = 0x00;
+  flash_text();
 }
 
 inline void print_dec1(unsigned int x, unsigned int y, int value, unsigned int pad)

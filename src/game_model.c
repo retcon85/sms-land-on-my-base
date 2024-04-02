@@ -163,6 +163,7 @@ void game_model_restart_level(game_model_t *m)
   m->landed = false;
   m->collision = false;
   m->ship.fuel = UINT16_MAX;
+  m->paused = false;
 }
 
 void game_model_engage_thrust(game_model_t *m)

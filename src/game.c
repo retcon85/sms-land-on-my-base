@@ -1,5 +1,6 @@
 #include "game.h"
 #include "SMSlib.h"
+#include "PSGlib.h"
 #include "game_model.h"
 #include "game_view.h"
 #include "random.h"
@@ -26,6 +27,18 @@ void game_run(game_config_t *config)
         game_model_restart_level(&model);
       }
       game_view_init(&model);
+      continue;
+    }
+
+    if (SMS_queryPauseRequested())
+    {
+      SMS_resetPauseRequest();
+      model.paused = !model.paused;
+    }
+
+    if (model.paused)
+    {
+      PSGSFXStop();
       continue;
     }
 

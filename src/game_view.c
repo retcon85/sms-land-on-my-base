@@ -77,6 +77,11 @@ void game_view_init(game_model_t *model)
 
   SMS_setSpritePaletteColor(10, 0x0e);
 
+  SMS_configureTextRenderer(TILE_USE_SPRITE_PALETTE);
+  SMS_printatXY(11, 9, "* PAUSED *");
+  SMS_configureTextRenderer(0);
+  flash_text_hide();
+
   SMS_displayOn();
 }
 
@@ -208,7 +213,7 @@ bool game_view_update(game_model_t *model)
         SMS_addSprite(x, y, FUEL_SPRITES + 3);
       else if (model->ship.fuel >= 1 * UINT16_MAX / 8)
         SMS_addSprite(x, y, FUEL_SPRITES + 4);
-      else if (model->ship.fuel >= 0)
+      else if (model->ship.fuel > 0)
         SMS_addSprite(x, y, FUEL_SPRITES + 5);
       x += 7;
       SMS_addSprite(x, y, FUEL_SPRITES + 1);
@@ -248,6 +253,17 @@ bool game_view_update(game_model_t *model)
   pad_tile++;
   if (pad_tile >= 250)
     pad_tile = 0;
+
+  static int pause_count = 0;
+  if (model->paused)
+  {
+    if (pause_count == 0)
+    {
+      flash_text();
+      pause_count = 64;
+    }
+    pause_count--;
+  }
 
   return false;
 }
