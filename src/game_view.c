@@ -122,6 +122,7 @@ static void game_show_landed_screen(game_model_t *model)
     SMS_waitForVBlank();
   SMS_configureTextRenderer(TILE_USE_SPRITE_PALETTE);
   SMS_printatXY(3, 5, "Press button for next level");
+  SMS_printatXY(11, 9, "          "); // erase paused message
   SMS_configureTextRenderer(0);
   while (true)
   {
@@ -146,6 +147,7 @@ static void game_show_crashed_screen(void)
     SMS_waitForVBlank();
   SMS_configureTextRenderer(TILE_USE_SPRITE_PALETTE);
   SMS_printatXY(6, 3, "Press button to retry");
+  SMS_printatXY(11, 9, "          "); // erase paused message
   SMS_configureTextRenderer(0);
   while (true)
   {
