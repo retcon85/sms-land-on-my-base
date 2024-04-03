@@ -163,9 +163,9 @@ void play_music(void)
 {
 #ifdef USEPSGLIB
   PSGRestoreVolumes();
-  PSGSetMusicVolumeAttenuation(9);
-  SMS_mapROMBank(primates_psg_bank);
-  PSGPlay(&primates_psg);
+  PSGSetMusicVolumeAttenuation(0);
+  SMS_mapROMBank(land_on_my_base_psg_bank);
+  PSGPlay(&land_on_my_base_psg);
 #endif
 }
 
@@ -185,6 +185,7 @@ bool show_code_menu(void)
   for (int i = 0; i < 8; i++)
     game_config.level_code[i] = '\0';
 
+  stop_music();
   SMS_waitForVBlank();
   fade_to_blank();
   SMS_printatXY(6, 7, "* Enter level code *");
@@ -197,9 +198,6 @@ bool show_code_menu(void)
   while (true)
   {
     SMS_waitForVBlank();
-#ifdef USEPSGLIB
-    PSGFrame();
-#endif
     SMS_printatXY(12 + len, 17, game_config.level_code[len] ? &game_config.level_code[len] : "_");
     keys = SMS_getKeysPressed();
     if ((keys & PORT_A_KEY_1) && game_config.level_code[len] >= 'A')
@@ -233,6 +231,7 @@ void show_instructions_menu(void)
 {
   unsigned int keys;
 
+  stop_music();
   SMS_waitForVBlank();
   fade_to_blank();
   SMS_printatXY(6, 7, "* Instructions *");
@@ -248,9 +247,6 @@ void show_instructions_menu(void)
   while (true)
   {
     SMS_waitForVBlank();
-#ifdef USEPSGLIB
-    PSGFrame();
-#endif
     keys = SMS_getKeysPressed();
     if (keys & PORT_A_KEY_1)
       return;
@@ -315,6 +311,7 @@ void show_main_menu(void)
     {
       SMS_waitForVBlank();
 #ifdef USEPSGLIB
+      SMS_mapROMBank(land_on_my_base_psg_bank);
       PSGFrame();
 #endif
       SMS_printatXY(26, menu_i + INVERT_CONTROLS * 2, game_config.invert_controls ? "YES" : "NO ");
@@ -336,11 +333,13 @@ void show_main_menu(void)
         {
           if (show_code_menu())
             return;
+          play_music();
           break;
         }
         else if (menu_option == INSTRUCTIONS)
         {
           show_instructions_menu();
+          play_music();
           break;
         }
         else if (menu_option == DIFFICULTY)
@@ -367,7 +366,7 @@ void main(void)
   show_splash();
   while (true)
   {
-    // play_music();
+    play_music();
     config_loaded = game_load_config(&game_config);
     show_main_menu();
     stop_music();
